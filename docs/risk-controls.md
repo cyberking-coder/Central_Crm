@@ -1,19 +1,19 @@
 # Part 17 — Mandatory Engineering Risk Controls
 
-Live status index. Each control is implemented, documented, tested.
+Live status index.
 
 | # | Control | Status | Evidence |
 |---|---|---|---|
-| 1 | Django-only schema ownership | 🟡 scaffolded | `docs/decisions/0001-django-owns-schema.md`; CI drift check lands with first migration in Phase 2 |
+| 1 | Django-only schema ownership | ✅ enforced | ADR 0001; all Phase 2 schema in committed migrations (`accounts/0001`, `accounts/0002_seed_rbac`, `departments/0001`, `employees/0001`, `employees/0002_employee_department`, `audit/0001`) |
 | 2 | Centralised financial calculations | ⏳ Phase 7 | `apps/analytics/services.py` reserved |
-| 3 | Permission enforcement matrix | ⏳ Phase 2 | Test matrix lands with auth |
+| 3 | Permission enforcement matrix | ✅ landed | `apps/accounts/permissions.HasPermissionCode`; `tests/test_permission_matrix.py` (role × code parametrised) + `tests/test_auth.py` |
 | 4 | Webhook idempotency | ⏳ Phase 7/9 | `apps/integrations/` scaffolded |
-| 5 | Data retention & deletion | 🟡 policy drafted | Soft-delete mixin in `apps/core/models.py`; `on_delete` rules land per model |
-| 6 | Timezone correctness | ✅ implemented | `apps/core/timezones.py`; `tests/test_timezones.py` |
+| 5 | Data retention & deletion | ✅ scaffolded | `Employee.user` PROTECT; `Department.manager` SET_NULL; `AuditLog` admin view-only (no add/edit/delete); `SoftDeleteModel` mixin; financial PROTECT lands in Phase 7 |
+| 6 | Timezone correctness | ✅ | `apps/core/timezones.py`; `tests/test_timezones.py` |
 | 7 | Duplicate detection | ⏳ Phase 3 | — |
-| 8 | Background job reliability | ⏳ Phase 4 | Celery introduced then |
-| 9 | Dashboard performance | ⏳ Phase 5 | `assertNumQueries` tests land with dashboard |
-| 10 | Export & data security | ✅ sanitiser + 🟡 permission mixin to follow | `apps/core/exports.py`; `tests/test_exports.py` |
-| 11 | Verification | ✅ ongoing | Phase Completion Reports include this table |
+| 8 | Background job reliability | ⏳ Phase 4 | — |
+| 9 | Dashboard performance | ⏳ Phase 5 | — |
+| 10 | Export & data security | 🟡 sanitiser + CSRF on mutations | `apps/core/exports.py`; CSRF enforced for all POSTs; permission mixin lands with first export endpoint in Phase 3 |
+| 11 | Verification | ✅ ongoing | Phase Completion Report §12 |
 
-Legend: ✅ landed · 🟡 partially landed · ⏳ scheduled · ❌ gap.
+Legend: ✅ landed · 🟡 partial · ⏳ scheduled · ❌ gap.

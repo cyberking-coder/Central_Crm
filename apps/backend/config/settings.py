@@ -38,11 +38,17 @@ INSTALLED_APPS = [
     "drf_spectacular",
     # Local
     "apps.core",
+    "apps.accounts",
+    "apps.departments",
+    "apps.employees",
     "apps.audit",
     "apps.analytics",
     "apps.integrations",
     "apps.api",
 ]
+
+AUTH_USER_MODEL = "accounts.User"
+LOGIN_URL = "/login"
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
@@ -150,6 +156,13 @@ REST_FRAMEWORK = {
         "rest_framework.filters.OrderingFilter",
     ],
     "EXCEPTION_HANDLER": "apps.core.exceptions.drf_exception_handler",
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "30/min",
+        "user": "600/min",
+    },
 }
 
 SPECTACULAR_SETTINGS = {

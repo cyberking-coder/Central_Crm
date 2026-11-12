@@ -1,40 +1,56 @@
 # Progress log
 
-## Phase 0 — Discovery & Architecture — ✅ Complete (approved)
+## Phase 0 — Discovery & Architecture — ✅ Complete
 
-- Phased roadmap, ERD, permission matrix summary, KPI formulas, risk register.
-- Part 17 — Mandatory Engineering Risk Controls — integrated across every phase.
+## Phase 1 — Technical Foundation — ✅ Complete
 
-## Phase 1 — Technical Foundation — 🚧 In progress
+## Phase 2 — Authentication & Access Control — 🚧 In progress
 
 Delivered:
 
-- Monorepo layout: `apps/frontend`, `apps/backend`, `packages/api-types`, `infrastructure/`, `docs/`.
-- Docker Compose dev stack: Postgres 16 + Django + Next.js.
-- Backend:
-  - Django 5 + DRF + django-filter + drf-spectacular + CORS + whitenoise.
-  - Argon2 password hashing configured.
-  - HttpOnly / SameSite / CSRF cookie settings scaffolded.
-  - Structured JSON logging; correlation-ID middleware.
-  - Consistent DRF error envelope.
-  - Shared `apps/core/` package: UUID + Timestamped + SoftDelete model mixins, timezone helpers (Part 17 #6), CSV sanitiser (Part 17 #10).
-  - Health endpoint at `/api/v1/health/` (DB reachability + TZ + currency).
-  - OpenAPI schema + Swagger UI at `/api/v1/schema/` and `/api/v1/docs/`.
-  - pytest + ruff configured. Initial tests: health, timezones, CSV sanitisation.
-- Frontend:
-  - Next.js 14 App Router + TypeScript (strict, noUncheckedIndexedAccess).
-  - Tailwind + design tokens (light + dark).
-  - Home page renders backend health.
-  - `lib/api.ts` with credentialed fetch; separate SSR vs browser base URL.
-- Docs: PRD, architecture, risk-controls index, decision log, CHANGELOG, KNOWN_ISSUES.
+- **Custom User** (`accounts.User`, UUID PK, email as username, Argon2
+  hashing). Email is case-normalised.
+- **Role** + **Permission** models with M2M `Role.permissions`. Permission
+  codes follow `<module>.<action>`.
+- **RBAC seed** (`accounts/0002_seed_rbac.py`): 32 permission codes across
+  leads / customers / sales / tasks / webinars / finance / marketing /
+  employees / departments / users / reports / audit; 8 roles seeded
+  exactly per Phase-0 matrix.
+- **Department** (`departments.Department`) + **Employee**
+  (`employees.Employee`) models with proper `on_delete`:
+  - `Department.manager → Employee` : `SET_NULL`
+  - `Employee.user → User` : `PROTECT` (deactivation never cascades).
+  - `Employee.department` / `Employee.reporting_manager` : `SET_NULL`.
+- **AuditLog** model: append-only, UUID PK, indexes on action/entity/time,
+  JSON before/after/extra, correlation ID, admin is view-only.
+- **DRF permission class** `HasPermissionCode` driven by
+  `view.required_permission`; superuser bypass; deactivated users denied.
+- **Auth endpoints** under `/api/v1/auth/`:
+  - `GET /csrf/` — issues CSRF cookie
+  - `POST /login/` — returns `MeSerializer` on success, 400 on failure
+  - `POST /logout/` — 204
+  - `GET /me/` — current user + permissions
+  - `POST /password/reset/request/` — always 204 (no account-existence leak)
+  - `POST /password/reset/confirm/` — Django signed token
+- **Throttling**: anon 30/min on login & reset endpoints.
+- **Audit emission** on login success/failure, logout, password-reset
+  request & completion.
+- **Bootstrap command** `python manage.py bootstrap_owner --email … --password …`
+  (idempotent).
+- **Frontend**:
+  - `/login` client page with CSRF-cookie flow
+  - `/dashboard` protected route (SSR `getMe` → redirect if unauthenticated)
+  - `/` redirects by auth state
+  - Logout button clears session
+- **Tests** added: `test_auth.py` (8 cases), `test_permission_matrix.py`
+  (RBAC seed + `HasPermissionCode` behaviour — parametrised across roles).
 
-**Exit criteria for Phase 1:**
+Exit criteria:
 
-- [x] Frontend starts
-- [x] Backend starts
-- [x] Database connection configured
-- [x] Migrations runnable (empty set so far — no business models yet)
-- [x] `/api/v1/health/` returns 200 when DB reachable
-- [x] Env vars load from `.env`
-- [x] OpenAPI & Swagger UI served
-- [x] Formatting, linting, test configs committed
+- [x] Valid login returns 200 and session cookie
+- [x] Invalid login returns 400 and emits `login.failed` audit
+- [x] Deactivated user cannot log in
+- [x] Logout clears session
+- [x] Password reset round-trip works
+- [x] Permission class denies anon / deactivated / wrong-role users
+- [x] Seeded roles match Phase-0 permission matrix
