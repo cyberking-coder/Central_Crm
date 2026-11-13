@@ -4,62 +4,58 @@
 ## Phase 1 — Technical Foundation — ✅ Complete
 ## Phase 2 — Authentication & Access Control — ✅ Complete
 ## Phase 3 — Leads & Customers — ✅ Complete
+## Phase 4 — Sales, Tasks & Notifications — ✅ Complete
 
-## Phase 4 — Sales, Tasks & Notifications — 🚧 In progress
+## Phase 5 — Management Dashboard — 🚧 In progress
 
-Delivered (backend):
+Delivered:
 
-- **Models**: `sales.SalesActivity`, `sales.FollowUp`, `tasks.Task`,
-  `notifications.Notification`. UUID PKs, indexes on hot columns.
-- **Permissions seed update**: `sales.followup.read`,
-  `sales.followup.manage`, `notifications.read` added across the eight
-  roles (migration `accounts/0003_add_phase4_permissions`).
-- **Services**:
-  - `sales/services/activities.record_activity` — updates
-    `Lead.last_contacted_at`, writes `CustomerTimelineEvent`, audits.
-  - `sales/services/followups` — `complete_followup`, `cancel_followup`,
-    `sweep_overdue_followups` (idempotent dedup).
-  - `tasks/services/tasks` — `complete_task`, `notify_task_assigned`,
-    `sweep_overdue_tasks` (idempotent dedup).
-  - Lead assignment now emits a notification to the assignee.
-- **APIs** under `/api/v1/`:
-  - `sales/activities/` CRUD (requires linked lead or customer).
-  - `sales/followups/` CRUD + `complete`, `cancel` actions.
-  - `tasks/` CRUD + `complete`, `mine` actions.
-  - `notifications/` list + `mark_read`, `mark_all_read`, `unread_count`.
-- **Celery (Part 17 #8)**:
-  - `config/celery.py` with retry limits and soft/hard time limits.
-  - `shared_task` definitions for the two sweeps.
-  - Celery Beat schedule: every 5 minutes.
-  - Also available as management commands: `sweep_followups`,
-    `sweep_tasks` (so cron or ad-hoc runs work without Celery).
-  - `docker-compose.yml` adds `redis`, `celery_worker`, `celery_beat`.
-- **Audit**: sales.activity.created/updated, followup.created/completed/
-  cancelled, task.created/updated/deleted/completed.
+- **`apps/analytics/services.py`** — single source for every KPI formula,
+  documented and reused by the dashboard endpoints (and later by reports
+  and the AI assistant). Metrics implemented:
+  - `leads_created_in_range`, `leads_assigned_in_range` (events, not state),
+    `leads_unassigned_now`.
+  - `customers_converted_in_range`.
+  - `activities_in_range` (optional `kind`), `followups_due_in_range`,
+    `followups_overdue_now`.
+  - `tasks_overdue_now`, `tasks_completed_in_range`.
+  - `leads_by_source_in_range`.
+  - `salesperson_leaderboard` (activities + conversions).
+  - Composite `today_payload`, `weekly_payload`.
+- **Filters** (`Filters` dataclass): employee / department / source;
+  applied uniformly across leads, customers, activities, follow-ups,
+  tasks.
+- **Timezone handling**: all day/week boundaries pass through
+  `apps.core.timezones.company_day_range_utc` /
+  `company_week_range_utc` (Part 17 #6), so filters are DST-safe.
+- **Endpoints** under `/api/v1/analytics/`:
+  - `GET dashboard/today/` (accepts `date`, `employee`, `department`,
+    `source`).
+  - `GET dashboard/weekly/`.
+  - `GET leaderboard/` (accepts `date`, `limit`).
+  - All require `reports.read`.
+- **Frontend**: real `/dashboard` page replaces the Phase-2 stub.
+  10 Today KPI cards, 5 Weekly cards, leads-by-source breakdown, top-10
+  salesperson leaderboard. KPI cards with hrefs drill into the leads /
+  customers / tasks lists with the corresponding filter.
 
-Delivered (frontend):
-
-- Nav adds **Tasks**.
-- Header adds **Notification bell**: polls `unread_count` every 30 s,
-  dropdown lists latest, per-row mark-read + mark-all-read.
-- `/tasks` with 3 tabs: *My tasks*, *Overdue*, *All*; inline Complete
-  button.
-- Lead detail now has an **Activity panel**: log activity, see recent
-  activities, schedule follow-ups, complete follow-ups.
-
-Tests:
-- `tests/test_sales_api.py` — 7 cases: activity requires lead/customer,
-  activity writes timeline, activity updates last_contacted_at,
-  salesperson activity scoping, follow-up complete, overdue sweep
-  idempotency, lead-assignment notification.
-- `tests/test_tasks_api.py` — 5 cases: task assigned notification,
-  salesperson task scoping, complete action, mine endpoint, overdue
-  sweep idempotency.
+Tests (`tests/test_analytics.py`, 8 cases):
+- Service formula checks for today payload (leads received, assigned,
+  awaiting, calls, activities, followups_overdue, tasks_overdue).
+- Filter narrowing (employee filter zeroes assignment count).
+- Weekly payload shape incl. source breakdown.
+- **Reconciliation**: API payload equals service payload field-by-field
+  (so the dashboard cannot diverge from the single source).
+- **Performance budget** (Part 17 #9): `assertNumQueries ≤ 25` on today,
+  `≤ 20` on weekly.
+- Permission: `Customer Support` (no `reports.read`) gets 403.
+- Leaderboard returns at least the seeded employee with the right counts.
 
 Exit criteria:
 
-- [x] Activities + follow-ups + tasks CRUD work end-to-end
-- [x] Overdue sweeps emit at most one notification per (user, entity)
-- [x] Notifications surface in the UI
-- [x] Salesperson scoping holds for activities, follow-ups, and tasks
-- [x] Celery broker + worker + beat wired in compose
+- [x] KPIs computed server-side only
+- [x] Formulas live in one module reused by endpoints and tests
+- [x] Dashboard payload reconciles with underlying records
+- [x] Query budget enforced in tests (Part 17 #9)
+- [x] All KPI endpoints permission-gated
+- [x] Frontend renders live numbers and drills into lists

@@ -1,32 +1,241 @@
+import Link from "next/link";
+
+import { apiGet } from "@/lib/api-server";
 import { getMe } from "@/lib/auth-server";
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
-  const me = (await getMe())!; // layout guarantees auth
+type TodayPayload = {
+  date: string;
+  timezone: string;
+  leads_received: number;
+  leads_assigned: number;
+  leads_awaiting_assignment: number;
+  calls_logged: number;
+  activities_logged: number;
+  followups_due_today: number;
+  followups_overdue: number;
+  customers_converted: number;
+  tasks_overdue: number;
+  tasks_completed: number;
+};
 
-  return (
-    <div className="space-y-8">
-      <header>
+type WeeklyPayload = {
+  week_start: string;
+  week_end: string;
+  leads_received: number;
+  leads_assigned: number;
+  customers_converted: number;
+  activities_logged: number;
+  tasks_completed: number;
+  leads_by_source: { source: string; count: number }[];
+};
+
+type LeaderboardRow = {
+  employee_id: string;
+  employee_name: string;
+  activities: number;
+  conversions: number;
+};
+
+export default async function DashboardPage() {
+  const me = (await getMe())!;
+  const canSeeReports =
+    me.permissions.includes("*") || me.permissions.includes("reports.read");
+
+  if (!canSeeReports) {
+    return (
+      <div className="space-y-4">
         <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
         <p className="text-muted">
-          Business KPIs land in Phase 5. For now, verify your access below.
+          You don't have report access. Reach out to your admin if you need
+          it.
+        </p>
+      </div>
+    );
+  }
+
+  const [today, weekly, leaderboard] = await Promise.all([
+    apiGet<TodayPayload>("/analytics/dashboard/today/"),
+    apiGet<WeeklyPayload>("/analytics/dashboard/weekly/"),
+    apiGet<LeaderboardRow[]>("/analytics/leaderboard/"),
+  ]);
+
+  return (
+    <div className="space-y-10">
+      <header>
+        <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
+        <p className="text-sm text-muted">
+          {today.ok
+            ? `${new Date(today.data.date).toLocaleDateString(undefined, {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+              })} · ${today.data.timezone}`
+            : "—"}
         </p>
       </header>
 
-      <section className="rounded-xl border border-border p-6">
-        <h2 className="mb-4 text-lg font-medium">Your access</h2>
-        <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
-          <dt className="text-muted">Email</dt>
-          <dd>{me.email}</dd>
-          <dt className="text-muted">Role</dt>
-          <dd>{me.role ?? "—"}</dd>
-          <dt className="text-muted">Permissions</dt>
-          <dd className="font-mono text-xs">
-            {me.permissions.length ? me.permissions.join(", ") : "—"}
-          </dd>
-        </dl>
-      </section>
+      {today.ok ? (
+        <section>
+          <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted">
+            Today
+          </h2>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <Kpi
+              label="Leads received"
+              value={today.data.leads_received}
+              href="/leads"
+            />
+            <Kpi
+              label="Leads assigned"
+              value={today.data.leads_assigned}
+              href="/leads?status=assigned"
+            />
+            <Kpi
+              label="Awaiting assignment"
+              value={today.data.leads_awaiting_assignment}
+              href="/leads?status=unassigned"
+              accent={today.data.leads_awaiting_assignment > 0 ? "amber" : undefined}
+            />
+            <Kpi
+              label="Customers converted"
+              value={today.data.customers_converted}
+              href="/customers"
+            />
+            <Kpi label="Calls logged" value={today.data.calls_logged} />
+            <Kpi label="Activities" value={today.data.activities_logged} />
+            <Kpi
+              label="Follow-ups due"
+              value={today.data.followups_due_today}
+            />
+            <Kpi
+              label="Follow-ups overdue"
+              value={today.data.followups_overdue}
+              accent={today.data.followups_overdue > 0 ? "red" : undefined}
+            />
+            <Kpi
+              label="Tasks overdue"
+              value={today.data.tasks_overdue}
+              href="/tasks?scope=overdue"
+              accent={today.data.tasks_overdue > 0 ? "red" : undefined}
+            />
+            <Kpi
+              label="Tasks completed"
+              value={today.data.tasks_completed}
+            />
+          </div>
+        </section>
+      ) : (
+        <p className="text-red-400">
+          Today's dashboard failed to load: {today.detail}
+        </p>
+      )}
+
+      {weekly.ok && (
+        <section>
+          <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted">
+            This week · {weekly.data.week_start} → {weekly.data.week_end}
+          </h2>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+            <Kpi label="Leads" value={weekly.data.leads_received} />
+            <Kpi label="Assigned" value={weekly.data.leads_assigned} />
+            <Kpi label="Converted" value={weekly.data.customers_converted} />
+            <Kpi label="Activities" value={weekly.data.activities_logged} />
+            <Kpi label="Tasks done" value={weekly.data.tasks_completed} />
+          </div>
+
+          {weekly.data.leads_by_source.length > 0 && (
+            <div className="mt-6 rounded-xl border border-border p-6">
+              <h3 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted">
+                Leads by source
+              </h3>
+              <ul className="space-y-1 text-sm">
+                {weekly.data.leads_by_source.map((row) => (
+                  <li
+                    key={row.source}
+                    className="flex items-center justify-between"
+                  >
+                    <span>{row.source}</span>
+                    <span className="font-mono text-muted">{row.count}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
+      )}
+
+      {leaderboard.ok && leaderboard.data.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted">
+            Salesperson leaderboard — this week
+          </h2>
+          <div className="overflow-hidden rounded-xl border border-border">
+            <table className="w-full text-sm">
+              <thead className="bg-border/20 text-left text-xs uppercase tracking-wide text-muted">
+                <tr>
+                  <th className="px-4 py-3">#</th>
+                  <th className="px-4 py-3">Salesperson</th>
+                  <th className="px-4 py-3 text-right">Activities</th>
+                  <th className="px-4 py-3 text-right">Conversions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {leaderboard.data.map((r, i) => (
+                  <tr
+                    key={r.employee_id}
+                    className="border-t border-border hover:bg-border/10"
+                  >
+                    <td className="px-4 py-3 text-muted">{i + 1}</td>
+                    <td className="px-4 py-3 font-medium">
+                      {r.employee_name}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono">
+                      {r.activities}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono">
+                      {r.conversions}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
     </div>
   );
+}
+
+function Kpi({
+  label,
+  value,
+  href,
+  accent,
+}: {
+  label: string;
+  value: number;
+  href?: string;
+  accent?: "red" | "amber";
+}) {
+  const accentCls =
+    accent === "red"
+      ? "border-red-500/40 text-red-300"
+      : accent === "amber"
+        ? "border-amber-500/40 text-amber-300"
+        : "border-border";
+
+  const content = (
+    <div
+      className={`rounded-xl border p-5 transition hover:bg-border/10 ${accentCls}`}
+    >
+      <p className="text-3xl font-semibold tabular-nums">{value}</p>
+      <p className="mt-1 text-xs uppercase tracking-wide text-muted">
+        {label}
+      </p>
+    </div>
+  );
+
+  return href ? <Link href={href}>{content}</Link> : content;
 }

@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### Phase 5 — Management Dashboard
+- apps/analytics/services.py: single-source KPI formulas (leads/activities/
+  followups/tasks/customers, by day and week) with uniform
+  employee/department/source filters; DST-safe via company TZ helpers.
+- Endpoints: GET /api/v1/analytics/{dashboard/today, dashboard/weekly,
+  leaderboard} — gated by reports.read.
+- Reconciliation test: API payload matches service payload field-by-field.
+- Performance tests: assertNumQueries ≤ 25 on today endpoint (Part 17 #9).
+- Frontend: real Dashboard page (10 Today KPIs, 5 Weekly, leads-by-source,
+  salesperson leaderboard) with drill-down links.
+
 ### Phase 4 — Sales, Tasks & Notifications
 - sales.SalesActivity, sales.FollowUp, tasks.Task, notifications.Notification.
 - Permissions seed +3 codes (sales.followup.read/manage, notifications.read).
