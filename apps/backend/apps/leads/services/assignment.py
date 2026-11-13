@@ -6,6 +6,8 @@ from django.db import transaction
 from apps.audit.services import record_audit
 from apps.employees.models import Employee
 from apps.leads.models import Lead, LeadAssignmentHistory
+from apps.notifications.models import Notification
+from apps.notifications.services import notify
 
 
 @transaction.atomic
@@ -31,4 +33,14 @@ def assign_lead(*, lead: Lead, to_employee: Employee | None,
         after={"assigned_to": str(to_employee.pk) if to_employee else None},
         extra={"reason": reason}, request=request,
     )
+    recipient = getattr(to_employee, "user", None) if to_employee else None
+    if recipient is not None:
+        kind = (Notification.Kind.LEAD_REASSIGNED if from_employee
+                else Notification.Kind.LEAD_ASSIGNED)
+        notify(
+            recipient=recipient, kind=kind,
+            title=f"Lead assigned: {lead.full_name}",
+            body=reason or "",
+            related_kind="lead", related_id=lead.pk,
+        )
     return lead

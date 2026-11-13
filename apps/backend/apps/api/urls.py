@@ -13,5 +13,8 @@ urlpatterns = [
     path("auth/", include("apps.accounts.urls")),
     path("leads/", include("apps.leads.urls")),
     path("customers/", include("apps.customers.urls")),
+    path("sales/", include("apps.sales.urls")),
+    path("tasks/", include("apps.tasks.urls")),
+    path("notifications/", include("apps.notifications.urls")),
     path("", include("apps.marketing.urls")),
 ]

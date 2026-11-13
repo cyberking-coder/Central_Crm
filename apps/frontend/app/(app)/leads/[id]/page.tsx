@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { apiGet } from "@/lib/api-server";
 import type { Lead } from "@/lib/types";
 import { LeadActions } from "./lead-actions";
+import { ActivityPanel } from "./activity-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -140,6 +141,8 @@ export default async function LeadDetailPage({
           )}
         </div>
       </section>
+
+      <ActivityPanel leadId={lead.data.id} />
     </div>
   );
 }

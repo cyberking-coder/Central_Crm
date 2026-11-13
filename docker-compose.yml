@@ -33,6 +33,54 @@ services:
         condition: service_healthy
     command: ["./entrypoint.sh"]
 
+  redis:
+    image: redis:7-alpine
+    platform: linux/amd64
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  celery_worker:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    platform: linux/amd64
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    volumes:
+      - ./apps/backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["celery", "-A", "config", "worker", "-l", "info"]
+
+  celery_beat:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    platform: linux/amd64
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db
+      CELERY_BROKER_URL: redis://redis:6379/0
+    volumes:
+      - ./apps/backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["celery", "-A", "config", "beat", "-l", "info"]
+
   frontend:
     build:
       context: ./apps/frontend

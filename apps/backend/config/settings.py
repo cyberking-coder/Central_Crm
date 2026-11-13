@@ -44,6 +44,9 @@ INSTALLED_APPS = [
     "apps.marketing",
     "apps.leads",
     "apps.customers",
+    "apps.sales",
+    "apps.tasks",
+    "apps.notifications",
     "apps.audit",
     "apps.analytics",
     "apps.integrations",
@@ -177,6 +180,16 @@ SPECTACULAR_SETTINGS = {
 }
 
 # ---- Logging --------------------------------------------------------------
+# ---- Celery -------------------------------------------------------------
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL",
+                                    "redis://redis:6379/0")
+CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND",
+                                        "redis://redis:6379/1")
+CELERY_TASK_ALWAYS_EAGER = _env_bool("CELERY_TASK_ALWAYS_EAGER", "0")
+CELERY_TIMEZONE = "UTC"
+CELERY_TASK_SOFT_TIME_LIMIT = 60
+CELERY_TASK_TIME_LIMIT = 120
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
