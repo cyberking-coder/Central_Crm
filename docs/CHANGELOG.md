@@ -2,23 +2,24 @@
 
 ## [Unreleased]
 
+### Phase 3 — Leads & Customers
+- marketing.LeadSource + Campaign models (UTM fields); 9 default sources seeded.
+- leads.Lead with 12 statuses, 3 priorities, assignment/status history tables.
+- customers.Customer + CustomerTimelineEvent.
+- Duplicate detection service (normalised phone/email) + `/leads/duplicates/`
+  endpoint (Part 17 #7).
+- Lead assignment service with history + audit.
+- Lead → Customer conversion that preserves lead and emits timeline event.
+- CSV import with validation + per-row reporting; CSV export sanitised
+  through `apps/core/exports.write_csv` and gated by export permissions
+  (Part 17 #10).
+- Salesperson queryset scoping (only assigned records visible).
+- Frontend: role-aware nav, /leads list with filters, /leads/new with
+  inline duplicate warning, /leads/[id] detail with convert + status +
+  history, /customers list and detail with timeline.
+
 ### Phase 2 — Authentication & Access Control
-- Custom `accounts.User` (UUID, email, Argon2).
-- `Role` + `Permission` models with M2M; 32 permission codes and 8 roles
-  seeded via data migration to match the Phase-0 matrix.
-- `departments.Department` and `employees.Employee` models.
-- `audit.AuditLog` append-only model + admin view-only.
-- DRF `HasPermissionCode` permission class.
-- Auth endpoints: CSRF, login, logout, me, password-reset request/confirm.
-- Anonymous throttle 30/min on auth endpoints.
-- `bootstrap_owner` management command.
-- Frontend login page, SSR-guarded `/dashboard`, logout.
+(See previous entry.)
 
 ### Phase 1 — Technical foundation
-- Monorepo + Docker Compose dev stack.
-- Django 5 + DRF skeleton with cookie-session auth scaffolding.
-- Next.js 14 + Tailwind design-token shell.
-- `GET /api/v1/health/` with DB reachability check.
-- drf-spectacular OpenAPI + Swagger UI.
-- Shared timezone, CSV-sanitiser, UUID & soft-delete mixins.
-- Initial test suite (health, timezones, CSV sanitisation).
+(See previous entry.)

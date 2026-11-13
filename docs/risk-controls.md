@@ -4,16 +4,14 @@ Live status index.
 
 | # | Control | Status | Evidence |
 |---|---|---|---|
-| 1 | Django-only schema ownership | ✅ enforced | ADR 0001; all Phase 2 schema in committed migrations (`accounts/0001`, `accounts/0002_seed_rbac`, `departments/0001`, `employees/0001`, `employees/0002_employee_department`, `audit/0001`) |
-| 2 | Centralised financial calculations | ⏳ Phase 7 | `apps/analytics/services.py` reserved |
-| 3 | Permission enforcement matrix | ✅ landed | `apps/accounts/permissions.HasPermissionCode`; `tests/test_permission_matrix.py` (role × code parametrised) + `tests/test_auth.py` |
-| 4 | Webhook idempotency | ⏳ Phase 7/9 | `apps/integrations/` scaffolded |
-| 5 | Data retention & deletion | ✅ scaffolded | `Employee.user` PROTECT; `Department.manager` SET_NULL; `AuditLog` admin view-only (no add/edit/delete); `SoftDeleteModel` mixin; financial PROTECT lands in Phase 7 |
-| 6 | Timezone correctness | ✅ | `apps/core/timezones.py`; `tests/test_timezones.py` |
-| 7 | Duplicate detection | ⏳ Phase 3 | — |
+| 1 | Django-only schema ownership | ✅ | All 10 migrations committed; ADR 0001 |
+| 2 | Centralised financial calculations | ⏳ Phase 7 | — |
+| 3 | Permission enforcement matrix | ✅ | `HasPermissionCode` applied per viewset with action→code maps; `tests/test_permission_matrix.py` + `test_leads_api.py` role-scope assertions |
+| 4 | Webhook idempotency | ⏳ Phase 7/9 | — |
+| 5 | Data retention & deletion | ✅ scaffolded | `AuditLog` admin read-only; `Employee.user` PROTECT; Lead → Customer SET_NULL preserves customer when lead archived |
+| 6 | Timezone correctness | ✅ | `apps/core/timezones.py` |
+| 7 | Duplicate detection | ✅ | `apps/core/normalisation.py`, `leads/services/duplicate_detection.py`, `/leads/duplicates/` endpoint, `tests/test_duplicate_detection.py` |
 | 8 | Background job reliability | ⏳ Phase 4 | — |
 | 9 | Dashboard performance | ⏳ Phase 5 | — |
-| 10 | Export & data security | 🟡 sanitiser + CSRF on mutations | `apps/core/exports.py`; CSRF enforced for all POSTs; permission mixin lands with first export endpoint in Phase 3 |
+| 10 | Export & data security | ✅ | Every CSV goes through `write_csv` sanitiser; `leads.export` / `customers.export` permissions enforced; `test_leads_api.test_export_csv_is_sanitised` + permission test |
 | 11 | Verification | ✅ ongoing | Phase Completion Report §12 |
-
-Legend: ✅ landed · 🟡 partial · ⏳ scheduled · ❌ gap.
