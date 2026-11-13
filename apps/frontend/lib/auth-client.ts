@@ -1,43 +1,7 @@
 /**
- * Auth helpers.
- *
- * Server-side: forwards the session cookie from the incoming request to the
- * internal backend so SSR `me` calls work.
- * Client-side: uses credentials: "include" and sends the CSRF header.
+ * Client-only auth helpers. Must only be imported from "use client" files.
  */
-import { cookies } from "next/headers";
-
-export type Me = {
-  id: string;
-  email: string;
-  full_name: string;
-  is_active: boolean;
-  is_superuser: boolean;
-  role: string | null;
-  permissions: string[];
-};
-
-function serverBase(): string {
-  return (
-    process.env.INTERNAL_API_BASE_URL ??
-    process.env.NEXT_PUBLIC_API_BASE_URL ??
-    "http://localhost:8000/api/v1"
-  );
-}
-
-export async function getMe(): Promise<Me | null> {
-  const cookieHeader = cookies().toString();
-  try {
-    const res = await fetch(`${serverBase()}/auth/me/`, {
-      cache: "no-store",
-      headers: cookieHeader ? { cookie: cookieHeader } : {},
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as Me;
-  } catch {
-    return null;
-  }
-}
+import type { Me } from "./auth-server";
 
 function readCookie(name: string): string | null {
   if (typeof document === "undefined") return null;

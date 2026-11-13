@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { getMe } from "@/lib/auth";
+import { getMe } from "@/lib/auth-server";
 
 export const dynamic = "force-dynamic";
 

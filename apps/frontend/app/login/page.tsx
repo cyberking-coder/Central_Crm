@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 
-import { clientLogin } from "@/lib/auth";
+import { clientLogin } from "@/lib/auth-client";
 
 export default function LoginPage() {
   const router = useRouter();

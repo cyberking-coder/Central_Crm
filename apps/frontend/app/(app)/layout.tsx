@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { getMe } from "@/lib/auth";
+import { getMe } from "@/lib/auth-server";
 import { LogoutButton } from "@/components/logout-button";
 
 export const dynamic = "force-dynamic";
