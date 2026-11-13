@@ -31,7 +31,7 @@ docker compose up --build
 ```
 
 Services:
-- Frontend: http://localhost:3000
+- Frontend: http://localhost:3100
 - Backend: http://localhost:8000
 - API health: http://localhost:8000/api/v1/health/
 - API docs: http://localhost:8000/api/v1/docs/
