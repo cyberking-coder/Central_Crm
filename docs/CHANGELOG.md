@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+### Phase 7 — Finance
+- apps/finance: Invoice, InvoiceItem, InvoiceSequence, Payment, Refund,
+  Expense, WebhookEvent (Part 17 #4).
+- Decimal(14,2) money, explicit ISO-3 currency, PROTECT on ledger FKs.
+- Atomic invoice numbering via SELECT FOR UPDATE on per-year sequence.
+- Services enforce server-side totals, state machine, refund guards.
+- Analytics now serves finance KPIs (Part 17 #2 complete); dashboard
+  gets a 5-card finance row for finance.read users.
+- Endpoints: /api/v1/finance/{invoices,payments,expenses} with CRUD plus
+  issue/void and refund custom actions; CSV export on invoices+payments.
+- 14 finance tests including API↔service reconciliation and webhook
+  idempotency.
+
 ### Phase 6 — Webinars
 - apps/webinars: Webinar, WebinarRegistration, WebinarAttendance models.
 - Partial unique constraints on (webinar, email_normalised) and

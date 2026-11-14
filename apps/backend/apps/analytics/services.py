@@ -23,7 +23,9 @@ from datetime import date as date_type, datetime
 from typing import Any
 from uuid import UUID
 
-from django.db.models import Count, Q
+from decimal import Decimal
+
+from django.db.models import Count, Q, Sum
 
 from apps.core.timezones import (
     company_day_range_utc,
@@ -32,6 +34,7 @@ from apps.core.timezones import (
 )
 from apps.customers.models import Customer
 from apps.employees.models import Employee
+from apps.finance.models import Expense, Invoice, Payment, Refund
 from apps.leads.models import Lead, LeadAssignmentHistory
 from apps.marketing.models import LeadSource
 from apps.sales.models import FollowUp, SalesActivity
@@ -206,6 +209,12 @@ def today_payload(d: date_type | None = None,
         "customers_converted": customers_converted_in_range(start, end, f),
         "tasks_overdue": tasks_overdue_now(f),
         "tasks_completed": tasks_completed_in_range(start, end, f),
+        # Finance (strings — Decimals aren't JSON-native)
+        "gross_collections": str(gross_collections_in_range(start, end)),
+        "refunds": str(refunds_in_range(start, end)),
+        "net_collections": str(net_collections_in_range(start, end)),
+        "outstanding_invoices": str(outstanding_invoice_total()),
+        "pending_payments": str(pending_payment_total()),
     }
 
 
@@ -224,6 +233,10 @@ def weekly_payload(d: date_type | None = None,
         "activities_logged": activities_in_range(start, end, f),
         "tasks_completed": tasks_completed_in_range(start, end, f),
         "leads_by_source": leads_by_source_in_range(start, end, f),
+        "gross_collections": str(gross_collections_in_range(start, end)),
+        "refunds": str(refunds_in_range(start, end)),
+        "net_collections": str(net_collections_in_range(start, end)),
+        "expenses": str(expenses_in_range(start, end)),
     }
 
 
@@ -240,6 +253,55 @@ def leads_by_source_in_range(start: datetime, end: datetime,
          "count": r["count"]}
         for r in rows
     ]
+
+
+# --------------------------------------------------------------------------
+# Finance metrics (Part 17 #2 — the single source of truth)
+# --------------------------------------------------------------------------
+
+ZERO = Decimal("0.00")
+
+
+def gross_collections_in_range(start: datetime, end: datetime) -> Decimal:
+    """Sum of SUCCESSFUL payment amounts recorded in the range."""
+    agg = Payment.objects.filter(
+        status=Payment.Status.SUCCESSFUL,
+        payment_date__gte=start.date(), payment_date__lt=end.date(),
+    ).aggregate(s=Sum("amount"))
+    return agg["s"] or ZERO
+
+
+def refunds_in_range(start: datetime, end: datetime) -> Decimal:
+    agg = Refund.objects.filter(
+        refunded_at__gte=start, refunded_at__lt=end,
+    ).aggregate(s=Sum("amount"))
+    return agg["s"] or ZERO
+
+
+def net_collections_in_range(start: datetime, end: datetime) -> Decimal:
+    return gross_collections_in_range(start, end) - refunds_in_range(start, end)
+
+
+def outstanding_invoice_total() -> Decimal:
+    """Sum of totals for invoices still issued or partially paid.
+    Not range-based — reflects the current balance sheet."""
+    agg = Invoice.objects.filter(
+        status__in=[Invoice.Status.ISSUED, Invoice.Status.PARTIALLY_PAID],
+    ).aggregate(s=Sum("total"))
+    return agg["s"] or ZERO
+
+
+def pending_payment_total() -> Decimal:
+    agg = Payment.objects.filter(status=Payment.Status.PENDING).aggregate(
+        s=Sum("amount"))
+    return agg["s"] or ZERO
+
+
+def expenses_in_range(start: datetime, end: datetime) -> Decimal:
+    agg = Expense.objects.filter(
+        expense_date__gte=start.date(), expense_date__lt=end.date(),
+    ).aggregate(s=Sum("amount"))
+    return agg["s"] or ZERO
 
 
 def salesperson_leaderboard(start: datetime, end: datetime,

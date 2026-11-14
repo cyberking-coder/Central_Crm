@@ -111,6 +111,53 @@ export type FollowUp = {
   updated_at: string;
 };
 
+export type InvoiceItem = {
+  id: string;
+  description: string;
+  quantity: string;
+  unit_price: string;
+  tax_rate: string;
+  amount: string;
+};
+
+export type Invoice = {
+  id: string;
+  number: string;
+  customer: string;
+  customer_name: string;
+  issued_date: string;
+  due_date: string | null;
+  currency: string;
+  subtotal: string;
+  tax: string;
+  discount: string;
+  total: string;
+  status: "draft" | "issued" | "partially_paid" | "paid" | "void";
+  notes: string;
+  items: InvoiceItem[];
+  created_at: string;
+  updated_at: string;
+};
+
+export type Payment = {
+  id: string;
+  customer: string;
+  customer_name: string;
+  invoice: string | null;
+  invoice_number: string | null;
+  amount: string;
+  currency: string;
+  payment_date: string;
+  method: string;
+  transaction_reference: string;
+  status: string;
+  source: string;
+  notes: string;
+  external_event_ref: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type Webinar = {
   id: string;
   title: string;

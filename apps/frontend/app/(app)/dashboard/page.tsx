@@ -18,6 +18,11 @@ type TodayPayload = {
   customers_converted: number;
   tasks_overdue: number;
   tasks_completed: number;
+  gross_collections: string;
+  refunds: string;
+  net_collections: string;
+  outstanding_invoices: string;
+  pending_payments: string;
 };
 
 type WeeklyPayload = {
@@ -125,6 +130,27 @@ export default async function DashboardPage() {
               value={today.data.tasks_completed}
             />
           </div>
+
+          {me.permissions.some(
+            (p) => p === "*" || p === "finance.read",
+          ) && (
+            <>
+              <h3 className="mb-3 mt-6 text-xs font-medium uppercase tracking-wide text-muted">
+                Today — Finance
+              </h3>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+                <MoneyKpi label="Gross collected" value={today.data.gross_collections} />
+                <MoneyKpi label="Refunds" value={today.data.refunds} />
+                <MoneyKpi label="Net collected" value={today.data.net_collections} />
+                <MoneyKpi
+                  label="Outstanding"
+                  value={today.data.outstanding_invoices}
+                  href="/finance/invoices?status=issued"
+                />
+                <MoneyKpi label="Pending" value={today.data.pending_payments} />
+              </div>
+            </>
+          )}
         </section>
       ) : (
         <p className="text-red-400">
@@ -237,5 +263,23 @@ function Kpi({
     </div>
   );
 
+  return href ? <Link href={href}>{content}</Link> : content;
+}
+
+function MoneyKpi({
+  label,
+  value,
+  href,
+}: {
+  label: string;
+  value: string;
+  href?: string;
+}) {
+  const content = (
+    <div className="rounded-xl border border-border p-5 transition hover:bg-border/10">
+      <p className="text-2xl font-semibold tabular-nums">{value}</p>
+      <p className="mt-1 text-xs uppercase tracking-wide text-muted">{label}</p>
+    </div>
+  );
   return href ? <Link href={href}>{content}</Link> : content;
 }

@@ -8,6 +8,7 @@ const ITEMS: NavItem[] = [
   { href: "/customers", label: "Customers", perm: "customers.read" },
   { href: "/tasks", label: "Tasks", perm: "tasks.read" },
   { href: "/webinars", label: "Webinars", perm: "webinars.read" },
+  { href: "/finance", label: "Finance", perm: "finance.read" },
 ];
 
 export function Nav({ permissions }: { permissions: string[] }) {
