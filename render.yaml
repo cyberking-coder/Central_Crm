@@ -1,0 +1,66 @@
+services:
+  - type: web
+    name: central-crm-backend
+    runtime: python
+    region: singapore
+    plan: starter        # change to "free" if you prefer sleeping dynos
+    rootDir: apps/backend
+    buildCommand: ./build.sh
+    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 3 --access-logfile - --error-logfile -
+    healthCheckPath: /api/v1/health/
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.5"
+      - key: DJANGO_DEBUG
+        value: "0"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_ALLOWED_HOSTS
+        sync: false      # set after first deploy to the Render URL
+      - key: DJANGO_CSRF_TRUSTED_ORIGINS
+        sync: false      # set to the Vercel URL
+      - key: DJANGO_CORS_ALLOWED_ORIGINS
+        sync: false      # set to the Vercel URL
+      - key: COMPANY_DEFAULT_TIMEZONE
+        value: "Asia/Kolkata"
+      - key: COMPANY_DEFAULT_CURRENCY
+        value: "INR"
+      - key: POSTGRES_HOST
+        sync: false      # Supabase host
+      - key: POSTGRES_PORT
+        value: "5432"
+      - key: POSTGRES_DB
+        value: "postgres"
+      - key: POSTGRES_USER
+        value: "postgres"
+      - key: POSTGRES_PASSWORD
+        sync: false      # Supabase DB password
+      - key: POSTGRES_SSLMODE
+        value: "require"
+      - key: SECURE_SSL_REDIRECT
+        value: "1"
+
+  - type: cron
+    name: sweep-followups
+    runtime: python
+    region: singapore
+    plan: starter
+    rootDir: apps/backend
+    schedule: "*/5 * * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python manage.py sweep_followups
+    envVars:
+      - fromGroup: central-crm-backend-env
+
+  - type: cron
+    name: sweep-tasks
+    runtime: python
+    region: singapore
+    plan: starter
+    rootDir: apps/backend
+    schedule: "*/5 * * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python manage.py sweep_tasks
+    envVars:
+      - fromGroup: central-crm-backend-env
