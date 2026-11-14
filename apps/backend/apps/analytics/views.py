@@ -3,17 +3,29 @@ from __future__ import annotations
 from datetime import date as date_type, datetime
 from uuid import UUID
 
+from django.http import HttpResponse
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.permissions import HasPermissionCode
-from apps.core.timezones import company_tz, company_week_range_utc, now_company
+from apps.audit.services import record_audit
+from apps.core.exports import write_csv
+from apps.core.timezones import (
+    company_day_range_utc,
+    company_tz,
+    company_week_range_utc,
+    now_company,
+)
 
 from .services import (
     Filters,
+    campaign_performance_report,
+    conversion_funnel,
+    department_performance_report,
     salesperson_leaderboard,
+    source_performance_report,
     today_payload,
     weekly_payload,
 )
@@ -110,3 +122,106 @@ class LeaderboardView(APIView):
         except (TypeError, ValueError):
             limit = 10
         return Response(salesperson_leaderboard(start, end, limit=limit))
+
+
+def _range_from_query(request):
+    """Resolve [start, end) company-local UTC range from query params.
+    Supports: ?from=YYYY-MM-DD&to=YYYY-MM-DD, falls back to the current week.
+    `to` is INCLUSIVE in user-facing semantics; we add 1 day for half-open."""
+    from datetime import timedelta
+    q = request.query_params
+    d_from = _parse_date(q.get("from"))
+    d_to = _parse_date(q.get("to"))
+    if not d_from or not d_to:
+        return company_week_range_utc(now_company().date())
+    start, _ = company_day_range_utc(d_from)
+    _, end = company_day_range_utc(d_to)
+    return start, end
+
+
+class SourceReportView(APIView):
+    permission_classes = [IsAuthenticated, HasPermissionCode]
+    required_permission = "reports.read"
+
+    def get(self, request):
+        start, end = _range_from_query(request)
+        return Response({
+            "from": start.date().isoformat(),
+            "to": (end.date() if hasattr(end, "date") else end).isoformat(),
+            "rows": source_performance_report(start, end),
+        })
+
+
+class CampaignReportView(APIView):
+    permission_classes = [IsAuthenticated, HasPermissionCode]
+    required_permission = "reports.read"
+
+    def get(self, request):
+        start, end = _range_from_query(request)
+        return Response({
+            "from": start.date().isoformat(),
+            "to": (end.date() if hasattr(end, "date") else end).isoformat(),
+            "rows": campaign_performance_report(start, end),
+        })
+
+
+class FunnelReportView(APIView):
+    permission_classes = [IsAuthenticated, HasPermissionCode]
+    required_permission = "reports.read"
+
+    def get(self, request):
+        start, end = _range_from_query(request)
+        funnel = conversion_funnel(start, end)
+        return Response({
+            "from": start.date().isoformat(),
+            "to": (end.date() if hasattr(end, "date") else end).isoformat(),
+            "stages": funnel,
+        })
+
+
+class DepartmentReportView(APIView):
+    permission_classes = [IsAuthenticated, HasPermissionCode]
+    required_permission = "reports.read"
+
+    def get(self, request):
+        start, end = _range_from_query(request)
+        return Response({
+            "from": start.date().isoformat(),
+            "to": (end.date() if hasattr(end, "date") else end).isoformat(),
+            "rows": department_performance_report(start, end),
+        })
+
+
+class ReportExportView(APIView):
+    """`GET /api/v1/analytics/reports/<kind>/export/` — CSV."""
+    permission_classes = [IsAuthenticated, HasPermissionCode]
+    required_permission = "reports.read"
+
+    REPORTS = {
+        "sources": (source_performance_report,
+                    ["source", "leads", "qualified", "converted",
+                     "conversion_pct", "attributed_revenue"]),
+        "campaigns": (campaign_performance_report,
+                      ["campaign", "source", "leads", "converted",
+                       "spend", "attributed_revenue",
+                       "cost_per_lead", "roi_pct"]),
+        "departments": (department_performance_report,
+                        ["department", "activities", "tasks_completed",
+                         "conversions"]),
+    }
+
+    def get(self, request, kind: str):
+        spec = self.REPORTS.get(kind)
+        if spec is None:
+            return Response({"detail": "Unknown report."}, status=404)
+        func, cols = spec
+        start, end = _range_from_query(request)
+        rows_data = func(start, end)
+        rows = [[r.get(c, "") for c in cols] for r in rows_data]
+        data = write_csv(cols, rows)
+        record_audit(actor=request.user, action="report.exported",
+                     entity_type="Report", entity_id=kind,
+                     extra={"count": len(rows)}, request=request)
+        resp = HttpResponse(data, content_type="text/csv")
+        resp["Content-Disposition"] = f'attachment; filename="{kind}-report.csv"'
+        return resp

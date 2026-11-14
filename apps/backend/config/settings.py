@@ -175,6 +175,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "anon": "30/min",
         "user": "600/min",
+        "public_leads": "10/min",
     },
 }
 

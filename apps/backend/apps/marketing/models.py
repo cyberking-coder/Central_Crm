@@ -31,6 +31,10 @@ class Campaign(models.Model):
     start_date = models.DateField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
+    currency = models.CharField(max_length=3, blank=True,
+                                 help_text="ISO-3; blank = company default.")
+    spend = models.DecimalField(max_digits=14, decimal_places=2, default=0,
+                                 help_text="Total ad spend recorded against this campaign.")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

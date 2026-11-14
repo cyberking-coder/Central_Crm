@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+### Phase 8 — Marketing & Reports
+- Campaign gains currency + spend fields (marketing/0003).
+- analytics/services adds 4 report functions sharing the dashboard's data path:
+  sources (leads, qualified, conv %, revenue), campaigns (CPL, ROI),
+  funnel, departments.
+- Endpoints /api/v1/analytics/reports/{sources, campaigns, funnel,
+  departments} + /{kind}/export/, all gated by reports.read, with date range.
+- Public lead capture at /api/v1/leads/public/ (10/min throttle, no auth,
+  UTM-driven campaign attribution, silent dedup).
+- Frontend: /reports hub + 4 report pages with shared date range picker +
+  CSV export; /marketing/campaigns list + new form.
+
 ### Phase 7 — Finance
 - apps/finance: Invoice, InvoiceItem, InvoiceSequence, Payment, Refund,
   Expense, WebhookEvent (Part 17 #4).

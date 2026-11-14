@@ -111,6 +111,23 @@ export type FollowUp = {
   updated_at: string;
 };
 
+export type Campaign = {
+  id: string;
+  name: string;
+  source: string;
+  source_name: string;
+  utm_source: string;
+  utm_medium: string;
+  utm_campaign: string;
+  start_date: string | null;
+  end_date: string | null;
+  is_active: boolean;
+  currency: string;
+  spend: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type InvoiceItem = {
   id: string;
   description: string;
