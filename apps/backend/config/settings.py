@@ -176,6 +176,7 @@ REST_FRAMEWORK = {
         "anon": "30/min",
         "user": "600/min",
         "public_leads": "10/min",
+        "webhook": "120/min",
     },
 }
 
@@ -188,6 +189,21 @@ SPECTACULAR_SETTINGS = {
 }
 
 # ---- Logging --------------------------------------------------------------
+# ---- Email --------------------------------------------------------------
+EMAIL_BACKEND = os.environ.get(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.smtp.EmailBackend"
+    if os.environ.get("EMAIL_HOST")
+    else "django.core.mail.backends.console.EmailBackend",
+)
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587") or "587")
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = _env_bool("EMAIL_USE_TLS", "1")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL",
+                                     "Central CRM <noreply@localhost>")
+
 # ---- Celery -------------------------------------------------------------
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL",
                                     "redis://redis:6379/0")

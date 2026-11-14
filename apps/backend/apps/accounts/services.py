@@ -39,13 +39,33 @@ def record_login(user: User, ip: str | None) -> None:
 def emit_password_reset_delivery(user: User, uid: str, token: str,
                                  request: Any) -> None:
     """
-    Email delivery is deferred to Phase 9 integrations. For now the reset
-    link is written to the backend logs so an admin can relay it. This is
-    documented in KNOWN_ISSUES.
+    Sends the reset link via the configured email adapter. When SMTP is
+    not configured, Django's console backend prints it — same end result
+    for dev, no silent drops in production.
     """
     link = f"/reset?uid={uid}&token={token}"
-    logger.info("password_reset_link", extra={
-        "user_id": str(user.pk),
-        "email": user.email,
-        "link": link,
-    })
+    try:
+        from apps.integrations.adapters.email_adapter import send_html_email
+        send_html_email(
+            to=user.email,
+            subject="Reset your Central CRM password",
+            text_body=(
+                f"Hi {user.full_name or user.email},\n\n"
+                f"Use this link to reset your password (valid for a limited time):\n"
+                f"{link}\n\n"
+                f"If you didn't request this, ignore the message.\n"
+            ),
+            html_body=(
+                f"<p>Hi {user.full_name or user.email},</p>"
+                f"<p>Use this link to reset your password "
+                f"(valid for a limited time):</p>"
+                f"<p><a href='{link}'>{link}</a></p>"
+                f"<p>If you didn't request this, ignore the message.</p>"
+            ),
+        )
+    except Exception as e:  # pragma: no cover
+        logger.exception("password_reset_email_failed")
+        logger.info("password_reset_link", extra={
+            "user_id": str(user.pk), "email": user.email, "link": link,
+            "error": str(e),
+        })

@@ -2,6 +2,25 @@
 
 ## [Unreleased]
 
+### Phase 9 — Integrations
+- integrations.read / .manage permissions seeded for Owner/Admin
+  (accounts/0004).
+- Adapter layer: razorpay (signature verify + handler dispatch with
+  payment.captured/payment.failed/refund.processed; unknown types
+  stored without side effects), email (SMTP via Django, falls back to
+  console backend), whatsapp (stub for future credentials).
+- POST /api/v1/integrations/webhooks/razorpay/ — signature verified
+  before anything is stored; replay-safe via Phase 7 WebhookEvent;
+  handler failures keep the dedup key so retries work.
+- GET /api/v1/integrations/status/ for /settings/integrations UI.
+- Password-reset emails now flow through the email adapter.
+- Frontend: Integrations nav + /settings/integrations status page.
+- .env.example extended with integrations block.
+- test_integrations.py (7): bad-signature rejection with no dedup burn,
+  payment.captured records + idempotent replay, unknown types stored
+  without side effect, no-customer-match skipped, email adapter via
+  locmem, status endpoint permission + configured reflection.
+
 ### Phase 8 — Marketing & Reports
 - Campaign gains currency + spend fields (marketing/0003).
 - analytics/services adds 4 report functions sharing the dashboard's data path:

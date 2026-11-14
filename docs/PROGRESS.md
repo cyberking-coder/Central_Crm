@@ -8,71 +8,86 @@
 ## Phase 5 — Management Dashboard — ✅ Complete
 ## Phase 6 — Webinars — ✅ Complete
 ## Phase 7 — Finance — ✅ Complete
+## Phase 8 — Marketing & Reports — ✅ Complete
 
-## Phase 8 — Marketing & Reports — 🚧 In progress
+## Phase 9 — Integrations — 🚧 In progress
 
-Delivered (backend):
+Delivered:
 
-- **Campaign gets `currency` + `spend`** fields; migration
-  `marketing/0003`.
-- **`apps/analytics/services.py` grows four reports**, each reading the
-  same tables the dashboard and CSV exports do (Part 17 #2 reuse):
-  - `source_performance_report` — per source: leads, qualified,
-    converted, conversion %, attributed revenue (first-touch rule
-    documented in the docstring).
-  - `campaign_performance_report` — per campaign: leads, converted,
-    spend, attributed revenue, cost-per-lead, ROI %.
-  - `conversion_funnel` — leads / contacted / qualified / converted /
-    lost for the range.
-  - `department_performance_report` — per department: activities, tasks
-    completed, conversions.
-- **Report endpoints** under `/api/v1/analytics/reports/`:
-  - `sources/`, `campaigns/`, `funnel/`, `departments/`.
-  - `<kind>/export/` → CSV via `write_csv` (Part 17 #10) with the
-    report-exported audit emitted.
-  - All gated by `reports.read`; `from` + `to` date params, falls back
-    to the current week.
-- **Public lead capture**: `POST /api/v1/leads/public/` is
-  unauthenticated (dedicated throttle rate `public_leads` = 10/min),
-  parses UTM parameters, finds campaign by `utm_campaign` (case
-  insensitive) or name, applies the usual duplicate detection AND
-  returns `200 OK` on duplicates so forms can't fingerprint existence.
-  Successful inserts emit `lead.public_created` audit; silent dedup
-  emits `lead.public_duplicate`.
+- **Permissions**: `integrations.read` + `integrations.manage` seeded
+  for Owner / Admin (Finance gets read). Migration
+  `accounts/0004_add_integrations_permissions`.
 
-Delivered (frontend):
+- **Adapter layer** under `apps/integrations/adapters/`:
+  - `base.py` — `IntegrationStatus` dataclass + `env()` helper.
+  - `razorpay.py` — full adapter:
+    - `verify_signature` HMAC-SHA256 with constant-time comparison.
+    - `handle_event` dispatches by `event`:
+      * `payment.captured` → `record_payment(status=SUCCESSFUL,
+        method=GATEWAY, source=GATEWAY, transaction_reference=pay_id,
+        external_event_ref=event_id)` against the matching customer
+        (email-normalised first, then phone).
+      * `payment.failed` → records a FAILED payment row for audit
+        continuity; duplicates are silently skipped.
+      * `refund.processed` → `record_refund` against the previously
+        recorded gateway payment by `payment_id`.
+      * Unknown types → event stored, marked PROCESSED, no side effect.
+  - `email_adapter.py` — Django `EmailMultiAlternatives` wrapper reading
+    standard SMTP env vars; falls back to console backend when
+    `EMAIL_HOST` is unset so nothing silently drops.
+  - `whatsapp.py` — stub: same interface a real impl will expose
+    (`send_text`), returns `{"sent": false, "reason": …}` with a log
+    entry. Real send intentionally off until credentials + template
+    approvals are in.
 
-- Nav adds **Campaigns** and **Reports**.
-- `/marketing/campaigns` list + `/marketing/campaigns/new` (name,
-  source, UTM triple, spend, currency, active).
-- `/reports` hub with 4 cards.
-- `/reports/sources` — table with conversion % + revenue + CSV export.
-- `/reports/campaigns` — CPL and ROI columns; ROI colour-coded.
-- `/reports/funnel` — horizontal bar chart (5 stages) built with plain
-  Tailwind; "Lost in range" counted separately.
-- `/reports/departments` — table + CSV export.
-- Shared **date range picker** (`components/date-range.tsx`) used by
-  every report; sensible default (this week).
+- **Webhook endpoint**:
+  - `POST /api/v1/integrations/webhooks/razorpay/`
+  - CSRF-exempt, `AllowAny`, custom `webhook` throttle scope
+    (120/min).
+  - **Signature verified before anything is stored** — a bad signature
+    returns 400 without burning a dedup key.
+  - Uses `ingest_webhook_event` from Phase 7, so replay is free: unique
+    `(provider, provider_event_id)` guarantees at-most-once processing.
+  - Handler failures mark the event FAILED with the exception text,
+    leaving the dedup key held so Razorpay can retry safely.
 
-Tests (`tests/test_reports.py`, 10 cases):
-- Source report counts across 2 sources + attributed revenue by
-  converted-customer.source.
-- Campaign report computes CPL=333.33 and ROI=200% for spend=1000
-  revenue=3000 leads=3.
-- Funnel counts respect status classifications (QUALIFIED + CONVERTED
-  both counted as qualified).
-- API endpoint reconciles against the service function row-by-row.
-- CSV export sanitiser invoked (content-type assertion).
-- `reports.read` enforcement (Customer Support → 403).
-- Public capture: creates and attributes to the right campaign.
-- Public capture: dedupe returns 200 without creating a second row.
-- Public capture requires no auth.
+- **Status endpoint**:
+  - `GET /api/v1/integrations/status/`
+  - Gated by `integrations.read`.
+  - Returns `{name, label, enabled, configured, last_event_at,
+    details}` per integration.
+
+- **Email outbound wired**: `accounts/services.py.
+  emit_password_reset_delivery` now calls `send_html_email` from the
+  adapter. No SMTP → console backend prints the mail, no silent drop.
+
+- **Settings**: `EMAIL_BACKEND` auto-selects SMTP vs console based on
+  `EMAIL_HOST`; standard email env vars plumbed through. New throttle
+  rate `webhook` = 120/min.
+
+- **Frontend**: nav adds **Integrations** (role-gated); page at
+  `/settings/integrations` shows each adapter's status + last event
+  time + env hint. No CRUD — secrets live in the server environment.
+
+- **`.env.example`** gains the integrations block.
+
+Tests (`tests/test_integrations.py`, 7 cases):
+- Bad signature → 400 and **no `WebhookEvent` row** (dedup key not
+  burned).
+- `payment.captured` → creates one Payment; replay is idempotent, still
+  one.
+- Unknown event type → stored, PROCESSED, no Payment row.
+- `payment.captured` with no customer match → explicit `skipped`
+  result, no Payment.
+- Email adapter: `locmem` backend confirms the message hits `outbox`
+  with the right recipient / subject / body.
+- Status endpoint: 403 for Salesperson (no `integrations.read`); 200
+  for Owner with correct `configured` reflection.
 
 Exit criteria:
 
-- [x] Reports fed from the same service module as the dashboard
-- [x] CPL, ROI, conversion rate computed server-side
-- [x] Date-range filters on every report
-- [x] CSV export for every table
-- [x] Public UTM capture + first-touch attribution working
-- [x] Rate limiting on public endpoint
+- [x] Real signature verification (HMAC-SHA256, constant-time).
+- [x] Replay is idempotent via existing `WebhookEvent` unique constraint.
+- [x] No silent success paths — failures audit + surface.
+- [x] Configured-vs-enabled state is reflected in a single endpoint.
+- [x] Secrets never leave the server environment.
