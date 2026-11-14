@@ -111,6 +111,50 @@ export type FollowUp = {
   updated_at: string;
 };
 
+export type Webinar = {
+  id: string;
+  title: string;
+  description: string;
+  start_at: string;
+  end_at: string;
+  platform: string;
+  registration_url: string;
+  registration_limit: number;
+  host: string | null;
+  host_name: string | null;
+  manager: string | null;
+  manager_name: string | null;
+  status: "scheduled" | "live" | "completed" | "cancelled";
+  created_at: string;
+  updated_at: string;
+};
+
+export type WebinarRegistration = {
+  id: string;
+  webinar: string;
+  lead: string | null;
+  customer: string | null;
+  full_name: string;
+  phone: string;
+  email: string;
+  registration_source: string | null;
+  source_name: string | null;
+  status: "registered" | "cancelled";
+  external_ref: string;
+  attendance_status: string | null;
+  created_at: string;
+};
+
+export type WebinarStats = {
+  registrations_total: number;
+  registrations_cancelled: number;
+  registrations_eligible: number;
+  attended: number;
+  partial: number;
+  absent: number;
+  attendance_rate_pct: number;
+};
+
 export type Notification = {
   id: string;
   kind: string;

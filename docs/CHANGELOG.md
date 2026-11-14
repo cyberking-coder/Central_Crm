@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### Phase 6 — Webinars
+- apps/webinars: Webinar, WebinarRegistration, WebinarAttendance models.
+- Partial unique constraints on (webinar, email_normalised) and
+  (webinar, phone_normalised) prevent duplicates at the DB level too.
+- Services: register_for_webinar (capacity + duplicate), cancel,
+  record_attendance (derives duration), webinar_summary.
+- Endpoints: CRUD, /{id}/register, /{id}/registrations, /{id}/stats,
+  /registrations, /attendance (PATCH).
+- Frontend: /webinars list + new + detail with stats + registration panel.
+- Nav adds Webinars.
+
 ### Phase 5 — Management Dashboard
 - apps/analytics/services.py: single-source KPI formulas (leads/activities/
   followups/tasks/customers, by day and week) with uniform

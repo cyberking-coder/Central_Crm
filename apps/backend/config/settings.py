@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "apps.customers",
     "apps.sales",
     "apps.tasks",
+    "apps.webinars",
     "apps.notifications",
     "apps.audit",
     "apps.analytics",
