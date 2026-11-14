@@ -89,6 +89,10 @@ TEMPLATES = [
     },
 ]
 
+_db_options: dict = {}
+if os.environ.get("POSTGRES_SSLMODE"):
+    _db_options["sslmode"] = os.environ["POSTGRES_SSLMODE"]
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
@@ -98,6 +102,7 @@ DATABASES = {
         "HOST": os.environ.get("POSTGRES_HOST", "db"),
         "PORT": os.environ.get("POSTGRES_PORT", "5432"),
         "CONN_MAX_AGE": 60,
+        "OPTIONS": _db_options,
     }
 }
 
