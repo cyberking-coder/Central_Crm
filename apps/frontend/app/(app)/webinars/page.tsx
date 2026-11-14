@@ -27,7 +27,7 @@ export default async function WebinarsPage() {
 
       {!result.ok ? (
         <p className="text-red-400">Failed to load: {result.detail}</p>
-      ) : result.data.results.length === 0 ? (
+      ) : (result.data.results ?? []).length === 0 ? (
         <div className="rounded-xl border border-dashed border-border p-12 text-center text-muted">
           No webinars yet.
         </div>
@@ -44,7 +44,7 @@ export default async function WebinarsPage() {
               </tr>
             </thead>
             <tbody>
-              {result.data.results.map((w) => (
+              {(result.data.results ?? []).map((w) => (
                 <tr key={w.id} className="border-t border-border hover:bg-border/10">
                   <td className="px-4 py-3">
                     <Link
