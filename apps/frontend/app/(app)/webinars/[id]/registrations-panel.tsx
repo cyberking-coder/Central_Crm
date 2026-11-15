@@ -30,6 +30,8 @@ export function RegistrationsPanel({ webinarId }: { webinarId: string }) {
 
   useEffect(() => {
     refresh();
+    // refresh depends only on webinarId via its closure
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [webinarId]);
 
   function addRegistration(e: React.FormEvent) {
