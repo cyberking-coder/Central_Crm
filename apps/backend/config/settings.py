@@ -158,7 +158,11 @@ if not DEBUG:
     SECURE_HSTS_PRELOAD = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    SESSION_COOKIE_SAMESITE = "None"  # frontend on a different origin
+    # Cross-site frontend on Vercel + backend on Render: the browser only
+    # sends these cookies on cross-site requests when SameSite=None and the
+    # cookie is Secure.
+    SESSION_COOKIE_SAMESITE = "None"
+    CSRF_COOKIE_SAMESITE = "None"
 
 # ---- CORS -----------------------------------------------------------------
 CORS_ALLOWED_ORIGINS = _env_list("DJANGO_CORS_ALLOWED_ORIGINS", "http://localhost:3000")
