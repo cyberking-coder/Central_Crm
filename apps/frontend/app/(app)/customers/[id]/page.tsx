@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { apiGet } from "@/lib/api-server";
+import { ConversationThread } from "@/components/conversation-thread";
 import type { Customer, TimelineEvent } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -83,6 +84,8 @@ export default async function CustomerDetailPage({
           )}
         </div>
       </section>
+
+      <ConversationThread customerId={customer.data.id} />
     </div>
   );
 }

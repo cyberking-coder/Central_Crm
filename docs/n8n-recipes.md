@@ -122,7 +122,93 @@ then bulk update.
 
 ---
 
-## 7. Razorpay payments → CRM Finance (already wired)
+## 7. WhatsApp conversations → CRM (both directions)
+
+Every WhatsApp message to/from a customer shows up on their
+`/customers/<id>` page threaded. Uses WhatsApp Business Cloud API via
+n8n.
+
+**Inbound — customer messages us:**
+
+1. In Meta: WhatsApp Business → Webhooks → point at your n8n webhook URL.
+2. n8n **Webhook** trigger → **Code** node to extract:
+   - `from` (the customer's number, e164)
+   - `text.body`
+   - `id` (message id)
+   - `timestamp`
+3. **HTTP Request** → POST `/api/v1/communications/ingest/` with:
+   ```json
+   {
+     "channel": "whatsapp",
+     "direction": "in",
+     "contact_phone": "{{$json.from}}",
+     "from_address":  "{{$json.from}}",
+     "to_address":    "{{$env.OUR_BUSINESS_NUMBER}}",
+     "body":          "{{$json.text.body}}",
+     "external_ref":  "{{$json.id}}",
+     "occurred_at":   "{{new Date($json.timestamp * 1000).toISOString()}}"
+   }
+   ```
+
+**Outbound — salesperson sends from WhatsApp:**
+
+Use the WhatsApp Business → Messages endpoint. After sending, POST the
+same shape to the CRM with `direction: "out"`.
+
+Dedup is automatic via `(channel, external_ref)` — replays of the Meta
+webhook don't double-insert.
+
+## 8. Email conversations → CRM
+
+**Inbound (customer → us):**
+
+1. n8n **Gmail** or **IMAP Email** trigger → "new email".
+2. **HTTP Request** → POST `/api/v1/communications/ingest/` with:
+   ```json
+   {
+     "channel": "email",
+     "direction": "in",
+     "contact_email": "{{$json.from.value[0].address}}",
+     "from_address":  "{{$json.from.value[0].address}}",
+     "to_address":    "{{$json.to.value[0].address}}",
+     "subject":       "{{$json.subject}}",
+     "body":          "{{$json.text}}",
+     "external_ref":  "{{$json.messageId}}",
+     "occurred_at":   "{{$json.date}}"
+   }
+   ```
+
+**Outbound (us → customer):**
+
+After your Gmail → send email action, chain another ingest POST with
+`direction: "out"`.
+
+## 9. Phone calls → CRM (Exotel / Twilio / Knowlarity)
+
+Each provider sends a call-ended webhook with the recording URL and
+duration:
+
+1. n8n **Webhook** trigger → provider's post-call hook.
+2. **HTTP Request** → POST `/api/v1/communications/ingest/` with:
+   ```json
+   {
+     "channel": "call",
+     "direction": "in",
+     "contact_phone": "{{$json.from}}",
+     "from_address":  "{{$json.from}}",
+     "to_address":    "{{$json.to}}",
+     "body":          "{{$json.transcription || ''}}",
+     "duration_seconds": "{{$json.duration}}",
+     "recording_url":   "{{$json.recording_url}}",
+     "external_ref":    "{{$json.sid}}",
+     "occurred_at":     "{{$json.end_time}}"
+   }
+   ```
+
+Call recordings play inline on the CRM thread; transcripts (if your
+provider returns them) show as the body.
+
+## 10. Razorpay payments → CRM Finance (already wired)
 
 Not n8n — Razorpay's dashboard webhook points directly at:
 ```
@@ -138,7 +224,7 @@ customer + invoice.
 
 ---
 
-## 8. Outbound: CRM → n8n (for custom workflows)
+## 11. Outbound: CRM → n8n (for custom workflows)
 
 When a lead is converted / invoice paid / etc., the CRM POSTs to any
 URL you register at **Settings → Webhooks**. Body:

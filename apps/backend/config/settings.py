@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "apps.tasks",
     "apps.webinars",
     "apps.finance",
+    "apps.communications",
     "apps.notifications",
     "apps.audit",
     "apps.analytics",

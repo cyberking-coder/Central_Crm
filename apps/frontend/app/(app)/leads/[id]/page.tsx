@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { apiGet } from "@/lib/api-server";
 import type { Lead } from "@/lib/types";
+import { ConversationThread } from "@/components/conversation-thread";
 import { LeadActions } from "./lead-actions";
 import { ActivityPanel } from "./activity-panel";
 
@@ -141,6 +142,8 @@ export default async function LeadDetailPage({
           )}
         </div>
       </section>
+
+      <ConversationThread leadId={lead.data.id} />
 
       <ActivityPanel leadId={lead.data.id} />
     </div>
