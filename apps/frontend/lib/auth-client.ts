@@ -13,17 +13,39 @@ function clientBase(): string {
   return process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api/v1";
 }
 
+// Cross-site: the frontend can't read the backend's csrftoken cookie via
+// document.cookie, so read it from the JSON body. The cookie is still sent
+// by the browser on the subsequent POST thanks to credentials:include.
+let _cachedCsrf: string | null = null;
+
+async function fetchCsrf(): Promise<string> {
+  if (_cachedCsrf) return _cachedCsrf;
+  const fromCookie = readCookie("csrftoken");
+  if (fromCookie) {
+    _cachedCsrf = fromCookie;
+    return fromCookie;
+  }
+  const res = await fetch(`${clientBase()}/auth/csrf/`, {
+    credentials: "include",
+  });
+  try {
+    const data = (await res.json()) as { csrfToken?: string };
+    _cachedCsrf = data.csrfToken ?? readCookie("csrftoken") ?? "";
+  } catch {
+    _cachedCsrf = readCookie("csrftoken") ?? "";
+  }
+  return _cachedCsrf;
+}
+
 export async function ensureCsrf(): Promise<void> {
-  if (readCookie("csrftoken")) return;
-  await fetch(`${clientBase()}/auth/csrf/`, { credentials: "include" });
+  await fetchCsrf();
 }
 
 export async function clientLogin(
   email: string,
   password: string,
 ): Promise<{ ok: true; me: Me } | { ok: false; error: string }> {
-  await ensureCsrf();
-  const csrf = readCookie("csrftoken") ?? "";
+  const csrf = await fetchCsrf();
   const res = await fetch(`${clientBase()}/auth/login/`, {
     method: "POST",
     credentials: "include",
@@ -44,8 +66,7 @@ export async function clientLogin(
 }
 
 export async function clientLogout(): Promise<void> {
-  await ensureCsrf();
-  const csrf = readCookie("csrftoken") ?? "";
+  const csrf = await fetchCsrf();
   await fetch(`${clientBase()}/auth/logout/`, {
     method: "POST",
     credentials: "include",

@@ -13,13 +13,27 @@ function base(): string {
   return process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api/v1";
 }
 
+// In cross-site deployments (FE on Vercel, BE on Render) document.cookie
+// cannot read the backend's csrftoken cookie, so we always fetch and read
+// the token from the JSON response body. The browser still sends the
+// matching cookie on the subsequent POST thanks to credentials:include.
+let _cachedCsrf: string | null = null;
+
 async function ensureCsrf(): Promise<string> {
-  let token = readCookie("csrftoken");
-  if (!token) {
-    await fetch(`${base()}/auth/csrf/`, { credentials: "include" });
-    token = readCookie("csrftoken");
+  if (_cachedCsrf) return _cachedCsrf;
+  const fromCookie = readCookie("csrftoken");
+  if (fromCookie) {
+    _cachedCsrf = fromCookie;
+    return fromCookie;
   }
-  return token ?? "";
+  const res = await fetch(`${base()}/auth/csrf/`, { credentials: "include" });
+  try {
+    const data = (await res.json()) as { csrfToken?: string };
+    _cachedCsrf = data.csrfToken ?? readCookie("csrftoken") ?? "";
+  } catch {
+    _cachedCsrf = readCookie("csrftoken") ?? "";
+  }
+  return _cachedCsrf;
 }
 
 async function parseError(res: Response): Promise<string> {
