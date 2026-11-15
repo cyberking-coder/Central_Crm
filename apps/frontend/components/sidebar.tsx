@@ -51,6 +51,7 @@ const ITEMS: NavItem[] = [
   { href: "/tasks", label: "Tasks", perm: "tasks.read", icon: ICONS.tasks, section: "Pipeline" },
   { href: "/webinars", label: "Webinars", perm: "webinars.read", icon: ICONS.webinars, section: "Programs" },
   { href: "/finance", label: "Finance", perm: "finance.read", icon: ICONS.finance, section: "Finance" },
+  { href: "/ads", label: "Ads", perm: "marketing.read", icon: ICONS.campaigns, section: "Growth" },
   { href: "/marketing/campaigns", label: "Campaigns", perm: "marketing.read", icon: ICONS.campaigns, section: "Growth" },
   { href: "/reports", label: "Reports", perm: "reports.read", icon: ICONS.reports, section: "Growth" },
   { href: "/settings/integrations", label: "Integrations", perm: "integrations.read", icon: ICONS.plug, section: "Settings" },

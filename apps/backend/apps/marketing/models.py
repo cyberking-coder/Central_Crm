@@ -47,3 +47,34 @@ class Campaign(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover
         return self.name
+
+
+class CampaignDailyMetrics(models.Model):
+    """One row per campaign per day from external ads platforms."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    campaign = models.ForeignKey(
+        Campaign, on_delete=models.CASCADE,
+        related_name="daily_metrics",
+    )
+    date = models.DateField(db_index=True)
+    spend = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    impressions = models.PositiveIntegerField(default=0)
+    clicks = models.PositiveIntegerField(default=0)
+    conversions = models.PositiveIntegerField(default=0)
+    currency = models.CharField(max_length=3, blank=True)
+    source = models.CharField(
+        max_length=24, blank=True,
+        help_text="e.g. 'meta_ads', 'google_ads'. Free-form.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-date"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["campaign", "date"],
+                name="campaign_daily_metrics_uniq",
+            ),
+        ]
+        indexes = [models.Index(fields=["date", "campaign"])]
