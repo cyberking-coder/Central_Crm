@@ -14,6 +14,7 @@ from rest_framework.throttling import AnonRateThrottle
 
 from apps.audit.services import record_audit
 
+from .api_tokens import ApiToken
 from .models import User
 from .serializers import (
     LoginSerializer,
@@ -101,6 +102,60 @@ class MeView(APIView):
     @extend_schema(responses={200: MeSerializer})
     def get(self, request):
         return Response(MeSerializer(request.user).data)
+
+
+class ApiTokenListCreateView(APIView):
+    """List the current user's API tokens, or create a new one."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        tokens = ApiToken.objects.filter(user=request.user)
+        return Response({
+            "results": [
+                {"id": str(t.id), "name": t.name, "prefix": t.prefix,
+                 "is_active": t.is_active,
+                 "created_at": t.created_at.isoformat(),
+                 "last_used_at": t.last_used_at.isoformat()
+                 if t.last_used_at else None}
+                for t in tokens
+            ]
+        })
+
+    def post(self, request):
+        name = (request.data.get("name") or "").strip()
+        if not name:
+            return Response({"detail": "name is required"},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if ApiToken.objects.filter(user=request.user, name=name).exists():
+            return Response({"detail": "You already have a token with that name."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        tok, raw = ApiToken.create_for_user(request.user, name)
+        record_audit(actor=request.user, action="api_token.created",
+                     entity_type="ApiToken", entity_id=str(tok.id),
+                     extra={"name": name}, request=request)
+        return Response({
+            "id": str(tok.id),
+            "name": tok.name,
+            "key": raw,  # shown exactly once
+            "prefix": tok.prefix,
+            "created_at": tok.created_at.isoformat(),
+        }, status=status.HTTP_201_CREATED)
+
+
+class ApiTokenDeleteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk):
+        try:
+            tok = ApiToken.objects.get(pk=pk, user=request.user)
+        except ApiToken.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        tok.delete()
+        record_audit(actor=request.user, action="api_token.revoked",
+                     entity_type="ApiToken", entity_id=str(pk),
+                     request=request)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class PasswordResetRequestView(APIView):

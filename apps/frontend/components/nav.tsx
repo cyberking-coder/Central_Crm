@@ -12,6 +12,7 @@ const ITEMS: NavItem[] = [
   { href: "/marketing/campaigns", label: "Campaigns", perm: "marketing.read" },
   { href: "/reports", label: "Reports", perm: "reports.read" },
   { href: "/settings/integrations", label: "Integrations", perm: "integrations.read" },
+  { href: "/settings/api-tokens", label: "API tokens" },
 ];
 
 export function Nav({ permissions }: { permissions: string[] }) {

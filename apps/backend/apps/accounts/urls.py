@@ -1,6 +1,8 @@
 from django.urls import path
 
 from .views import (
+    ApiTokenDeleteView,
+    ApiTokenListCreateView,
     CsrfView,
     LoginView,
     LogoutView,
@@ -18,4 +20,7 @@ urlpatterns = [
          name="auth-password-reset-request"),
     path("password/reset/confirm/", PasswordResetConfirmView.as_view(),
          name="auth-password-reset-confirm"),
+    path("tokens/", ApiTokenListCreateView.as_view(), name="auth-tokens"),
+    path("tokens/<uuid:pk>/", ApiTokenDeleteView.as_view(),
+         name="auth-token-delete"),
 ]
