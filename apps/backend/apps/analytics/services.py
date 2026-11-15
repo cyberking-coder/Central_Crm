@@ -297,6 +297,43 @@ def pending_payment_total() -> Decimal:
     return agg["s"] or ZERO
 
 
+def leads_per_day(start: datetime, end: datetime) -> list[dict[str, Any]]:
+    """[{date, count}] — one row per day in [start, end)."""
+    from django.db.models.functions import TruncDate
+    rows = (Lead.objects
+            .filter(created_at__gte=start, created_at__lt=end)
+            .annotate(d=TruncDate("created_at"))
+            .values("d").annotate(count=Count("id")).order_by("d"))
+    return [{"date": r["d"].isoformat(), "count": r["count"]} for r in rows]
+
+
+def collections_per_day(start: datetime, end: datetime) -> list[dict[str, Any]]:
+    """[{date, gross, refunds, net}] from successful payments / refunds."""
+    from django.db.models.functions import TruncDate
+    pay_rows = (Payment.objects
+                .filter(status=Payment.Status.SUCCESSFUL,
+                        payment_date__gte=start.date(),
+                        payment_date__lt=end.date())
+                .values("payment_date")
+                .annotate(gross=Sum("amount")))
+    pay_map = {r["payment_date"].isoformat(): r["gross"] or ZERO
+               for r in pay_rows}
+    ref_rows = (Refund.objects
+                .filter(refunded_at__gte=start, refunded_at__lt=end)
+                .annotate(d=TruncDate("refunded_at"))
+                .values("d").annotate(refunds=Sum("amount")))
+    ref_map = {r["d"].isoformat(): r["refunds"] or ZERO
+               for r in ref_rows}
+    days = sorted(set(pay_map) | set(ref_map))
+    return [
+        {"date": d,
+         "gross": str(pay_map.get(d, ZERO)),
+         "refunds": str(ref_map.get(d, ZERO)),
+         "net": str((pay_map.get(d, ZERO)) - (ref_map.get(d, ZERO)))}
+        for d in days
+    ]
+
+
 def expenses_in_range(start: datetime, end: datetime) -> Decimal:
     agg = Expense.objects.filter(
         expense_date__gte=start.date(), expense_date__lt=end.date(),

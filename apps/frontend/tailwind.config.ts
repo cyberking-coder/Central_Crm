@@ -11,11 +11,16 @@ const config: Config = {
     extend: {
       colors: {
         bg: "hsl(var(--bg))",
+        panel: "hsl(var(--panel))",
         fg: "hsl(var(--fg))",
         muted: "hsl(var(--muted))",
         border: "hsl(var(--border))",
         primary: "hsl(var(--primary))",
         "primary-fg": "hsl(var(--primary-fg))",
+        success: "hsl(var(--success))",
+        warn: "hsl(var(--warn))",
+        danger: "hsl(var(--danger))",
+        accent: "hsl(var(--accent))",
       },
       borderRadius: { xl: "0.9rem" },
     },

@@ -232,7 +232,14 @@ CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL",
                                     "redis://redis:6379/0")
 CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND",
                                         "redis://redis:6379/1")
-CELERY_TASK_ALWAYS_EAGER = _env_bool("CELERY_TASK_ALWAYS_EAGER", "0")
+# Default to running tasks inline (no worker needed) unless a broker is set.
+# Explicitly opt out of eager with CELERY_TASK_ALWAYS_EAGER=0 once Redis is
+# wired up.
+CELERY_TASK_ALWAYS_EAGER = _env_bool(
+    "CELERY_TASK_ALWAYS_EAGER",
+    "1" if os.environ.get("CELERY_BROKER_URL") is None else "0",
+)
+CELERY_TASK_EAGER_PROPAGATES = False
 CELERY_TIMEZONE = "UTC"
 CELERY_TASK_SOFT_TIME_LIMIT = 60
 CELERY_TASK_TIME_LIMIT = 120

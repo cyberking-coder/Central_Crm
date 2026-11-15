@@ -7,6 +7,7 @@ from django.utils import timezone
 from apps.audit.services import record_audit
 from apps.core.normalisation import normalise_email, normalise_phone
 from apps.customers.models import Customer, CustomerTimelineEvent
+from apps.integrations.outbound import fire_event
 from apps.leads.models import Lead, LeadStatusHistory
 
 
@@ -56,4 +57,15 @@ def convert_lead_to_customer(*, lead: Lead, actor, request=None) -> Customer:
         entity_type="Lead", entity_id=str(lead.pk),
         after={"customer_id": str(customer.pk)}, request=request,
     )
+    fire_event("lead.converted", {
+        "lead_id": str(lead.pk),
+        "customer_id": str(customer.pk),
+        "full_name": customer.full_name,
+    })
+    fire_event("customer.created", {
+        "customer_id": str(customer.pk),
+        "full_name": customer.full_name,
+        "email": customer.email,
+        "phone": customer.phone,
+    })
     return customer

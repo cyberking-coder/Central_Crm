@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { apiGet } from "@/lib/api-server";
 import { getMe } from "@/lib/auth-server";
+import { DashboardCharts } from "./dashboard-charts";
 
 export const dynamic = "force-dynamic";
 
@@ -80,6 +81,8 @@ export default async function DashboardPage() {
             : "—"}
         </p>
       </header>
+
+      {canSeeReports && <DashboardCharts />}
 
       {today.ok ? (
         <section>
@@ -247,16 +250,24 @@ function Kpi({
 }) {
   const accentCls =
     accent === "red"
-      ? "border-red-500/40 text-red-300"
+      ? "border-danger/40"
       : accent === "amber"
-        ? "border-amber-500/40 text-amber-300"
+        ? "border-warn/40"
         : "border-border";
+  const valueCls =
+    accent === "red"
+      ? "text-danger"
+      : accent === "amber"
+        ? "text-warn"
+        : "";
 
   const content = (
     <div
-      className={`rounded-xl border p-5 transition hover:bg-border/10 ${accentCls}`}
+      className={`rounded-xl border bg-panel p-5 shadow-sm transition hover:border-primary/40 hover:shadow ${accentCls}`}
     >
-      <p className="text-3xl font-semibold tabular-nums">{value}</p>
+      <p className={`text-3xl font-semibold tabular-nums ${valueCls}`}>
+        {value}
+      </p>
       <p className="mt-1 text-xs uppercase tracking-wide text-muted">
         {label}
       </p>
@@ -276,7 +287,7 @@ function MoneyKpi({
   href?: string;
 }) {
   const content = (
-    <div className="rounded-xl border border-border p-5 transition hover:bg-border/10">
+    <div className="rounded-xl border border-border bg-panel p-5 shadow-sm transition hover:border-primary/40 hover:shadow">
       <p className="text-2xl font-semibold tabular-nums">{value}</p>
       <p className="mt-1 text-xs uppercase tracking-wide text-muted">{label}</p>
     </div>

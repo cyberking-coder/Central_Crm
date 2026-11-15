@@ -22,8 +22,10 @@ from apps.core.timezones import (
 from .services import (
     Filters,
     campaign_performance_report,
+    collections_per_day,
     conversion_funnel,
     department_performance_report,
+    leads_per_day,
     salesperson_leaderboard,
     source_performance_report,
     today_payload,
@@ -189,6 +191,25 @@ class DepartmentReportView(APIView):
             "from": start.date().isoformat(),
             "to": (end.date() if hasattr(end, "date") else end).isoformat(),
             "rows": department_performance_report(start, end),
+        })
+
+
+class ChartsView(APIView):
+    """Timeseries for dashboard charts (last 30 days by default)."""
+    permission_classes = [IsAuthenticated, HasPermissionCode]
+    required_permission = "reports.read"
+
+    def get(self, request):
+        from datetime import timedelta
+        today = now_company().date()
+        start_d = today - timedelta(days=29)
+        start, _ = company_day_range_utc(start_d)
+        _, end = company_day_range_utc(today)
+        return Response({
+            "from": start.date().isoformat(),
+            "to": today.isoformat(),
+            "leads_per_day": leads_per_day(start, end),
+            "collections_per_day": collections_per_day(start, end),
         })
 
 

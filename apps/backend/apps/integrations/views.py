@@ -16,6 +16,7 @@ from apps.finance.models import WebhookEvent
 from apps.finance.services.webhooks import ingest_webhook_event
 
 from .adapters import email_adapter, razorpay, whatsapp
+from .outbound import EVENT_CHOICES, WebhookSubscription
 
 log = logging.getLogger(__name__)
 
@@ -69,6 +70,79 @@ class RazorpayWebhookView(APIView):
 
         return Response({"ok": True, "duplicate": not was_new,
                          "event_id": str(event.id), "result": result or {}})
+
+
+class WebhookSubscriptionsView(APIView):
+    """List / create outbound webhook subscriptions."""
+    permission_classes = [IsAuthenticated, HasPermissionCode]
+
+    def get_permissions(self):
+        self.required_permission = (
+            "integrations.read" if self.request.method == "GET"
+            else "integrations.manage"
+        )
+        return super().get_permissions()
+
+    def get(self, request):
+        subs = WebhookSubscription.objects.all()
+        return Response({
+            "available_events": [{"code": c, "label": l}
+                                  for c, l in EVENT_CHOICES],
+            "results": [self._serialise(s) for s in subs],
+        })
+
+    def post(self, request):
+        name = (request.data.get("name") or "").strip()
+        url = (request.data.get("url") or "").strip()
+        events = request.data.get("events") or []
+        if not name or not url:
+            return Response({"detail": "name and url are required"},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if not isinstance(events, list) or not events:
+            return Response({"detail": "events must be a non-empty list"},
+                            status=status.HTTP_400_BAD_REQUEST)
+        from .outbound import ALL_EVENTS
+        bad = [e for e in events if e not in ALL_EVENTS]
+        if bad:
+            return Response({"detail": f"unknown events: {bad}"},
+                            status=status.HTTP_400_BAD_REQUEST)
+        sub = WebhookSubscription(
+            name=name, url=url, events=events,
+            created_by=request.user,
+        )
+        sub.generate_secret()
+        sub.save()
+        return Response({**self._serialise(sub), "secret": sub.secret},
+                        status=status.HTTP_201_CREATED)
+
+    @staticmethod
+    def _serialise(s):
+        return {
+            "id": str(s.id),
+            "name": s.name,
+            "url": s.url,
+            "events": s.events,
+            "is_active": s.is_active,
+            "failure_count": s.failure_count,
+            "last_delivery_at": s.last_delivery_at.isoformat()
+            if s.last_delivery_at else None,
+            "last_delivery_status": s.last_delivery_status,
+            "last_error": s.last_error,
+            "created_at": s.created_at.isoformat(),
+        }
+
+
+class WebhookSubscriptionDetailView(APIView):
+    permission_classes = [IsAuthenticated, HasPermissionCode]
+    required_permission = "integrations.manage"
+
+    def delete(self, request, pk):
+        try:
+            sub = WebhookSubscription.objects.get(pk=pk)
+        except WebhookSubscription.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        sub.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class IntegrationsStatusView(APIView):

@@ -2,6 +2,7 @@ from django.urls import path
 
 from .views import (
     CampaignReportView,
+    ChartsView,
     DashboardTodayView,
     DashboardWeeklyView,
     DepartmentReportView,
@@ -14,6 +15,7 @@ from .views import (
 urlpatterns = [
     path("dashboard/today/", DashboardTodayView.as_view(), name="dashboard-today"),
     path("dashboard/weekly/", DashboardWeeklyView.as_view(), name="dashboard-weekly"),
+    path("dashboard/charts/", ChartsView.as_view(), name="dashboard-charts"),
     path("leaderboard/", LeaderboardView.as_view(), name="leaderboard"),
     path("reports/sources/", SourceReportView.as_view(), name="report-sources"),
     path("reports/campaigns/", CampaignReportView.as_view(), name="report-campaigns"),

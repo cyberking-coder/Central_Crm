@@ -5,6 +5,7 @@ from decimal import Decimal
 from django.db import IntegrityError, transaction
 
 from apps.audit.services import record_audit
+from apps.integrations.outbound import fire_event
 
 from ..models import Invoice, Payment, Refund
 from .invoices import recompute_invoice_status
@@ -59,7 +60,24 @@ def record_payment(*, customer, invoice=None, amount, currency,
     )
 
     if invoice is not None and p.status == Payment.Status.SUCCESSFUL:
+        before_status = invoice.status
         recompute_invoice_status(invoice)
+        if invoice.status == Invoice.Status.PAID and before_status != Invoice.Status.PAID:
+            fire_event("invoice.paid", {
+                "invoice_id": str(invoice.pk),
+                "number": invoice.number,
+                "customer_id": str(invoice.customer_id),
+                "total": str(invoice.total),
+                "currency": invoice.currency,
+            })
+    if p.status == Payment.Status.SUCCESSFUL:
+        fire_event("payment.successful", {
+            "payment_id": str(p.pk),
+            "customer_id": str(p.customer_id),
+            "amount": str(p.amount),
+            "currency": p.currency,
+            "invoice_id": str(p.invoice_id) if p.invoice_id else None,
+        })
     return p
 
 
@@ -103,4 +121,10 @@ def record_refund(*, payment: Payment, amount, refunded_at,
 
     if payment.invoice_id:
         recompute_invoice_status(payment.invoice)
+    fire_event("payment.refunded", {
+        "refund_id": str(refund.pk),
+        "payment_id": str(payment.pk),
+        "amount": str(refund.amount),
+        "currency": refund.currency,
+    })
     return refund
