@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from django.contrib.auth import authenticate, login, logout
 from django.middleware.csrf import get_token
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -45,8 +47,15 @@ class CsrfView(APIView):
         return Response({"csrfToken": get_token(request)})
 
 
+@method_decorator(csrf_exempt, name="dispatch")
 class LoginView(APIView):
+    """
+    CSRF-exempt by design. Login is credential-protected and must work
+    cross-site (FE on Vercel, BE on Render) where third-party cookies
+    are commonly blocked. All other state-changing endpoints keep CSRF.
+    """
     permission_classes = [AllowAny]
+    authentication_classes: list = []
     throttle_classes = [AnonRateThrottle]
 
     @extend_schema(
