@@ -30,7 +30,7 @@ envVarGroups:
       - key: POSTGRES_SSLMODE
         value: "require"
       - key: SECURE_SSL_REDIRECT
-        value: "1"
+        value: "0"
 
 services:
   - type: web

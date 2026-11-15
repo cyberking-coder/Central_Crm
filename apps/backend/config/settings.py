@@ -152,7 +152,11 @@ X_FRAME_OPTIONS = "DENY"
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 # In production (DEBUG=0) force HTTPS redirects, HSTS, and secure cookies.
 if not DEBUG:
-    SECURE_SSL_REDIRECT = _env_bool("SECURE_SSL_REDIRECT", "1")
+    # Default off: Render/Vercel/most PaaS platforms terminate TLS at their
+    # edge, so Django redirecting creates loops (the forwarded request
+    # looks like plain HTTP to Django even though the client used HTTPS).
+    # Opt in with SECURE_SSL_REDIRECT=1 only on bare-metal deployments.
+    SECURE_SSL_REDIRECT = _env_bool("SECURE_SSL_REDIRECT", "0")
     SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", "31536000"))
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
